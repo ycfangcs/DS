@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMP_visualize</title>
+    <style>
+        .wrap {
+            height: 50PX;
+            display: flex;
+        }
+        .wrap span {
+            flex: 1;
+            margin: 5px;
+            border-radius: 10px;
+            text-align: center;
+            padding: 10px;
+        }
+        span.lightcyan {
+            background-color: lightcyan;
+            border: 1px solid #030f13;
+        }
+        span.lightskyblue {
+            background-color: lightskyblue;
+            border: 1px solid #030f13;
+        }
+        span.lightblue {
+            background-color: aquamarine;
+            border: 1px solid #030f13;
+        }
+        body {
+            background-color: #75a6e2;
+            font-family: "Microsoft YaHei";
+            font-size: larger;
+            
+            
+        }
+        input {
+            /* 文字颜色 */
+            color: rgb(1, 13, 9); 
+            background: #9cc8ff; 
+            /* 边框样式、颜色、宽度 */
+            border: 3px solid #030f13;
+            /* 给边框添加圆角 */
+            border-radius: 6px; 
+            /* color: black; */
+            padding: 16px 32px;
+            text-align: center;
+            display: inline-block;
+            font-size: 25px;
+            margin: 4px 2px ;
+            cursor: pointer;
+        }
+        label {
+            /* 居中 */
+            text-align: center;
+            /* 加粗放大 */
+            font-weight: bold;
+            font-size: 20px;
+        }
+        button {
+            /* 文字颜色 */
+            color: #0099CC; 
+            /* 清除背景色 */
+            background: transparent; 
+            /* 边框样式、颜色、宽度 */
+            border: 3px solid #0b5d78;
+            /* 给边框添加圆角 */
+            border-radius: 6px; 
+            color: black;
+            padding: 16px 32px;
+            text-align: center;
+            font-weight: bold;
+            display: inline-block;
+            font-size: 18px;
+            margin: 4px 5px;
+            cursor: pointer;
+        }
+        /* 悬停样式 */
+        button:hover {
+            background-color: #008CBA;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="container">
+            <div id="sourceIndex" class="wrap"></div>
+            <div id="source" class="wrap"></div>
+        </div>
+        <div class="container">
+            <div id="patternIndex" class="wrap"></div>
+            <div id="pattern" class="wrap"></div>
+            <div id="patternArray" class="wrap"></div>
+            <div id="patternArrayValue" class="wrap"></div>
+        </div>
+
+        <div style="margin-top: 50px; display: flex; margin-left: 30%; margin-right: 30%; flex-direction: column">
+            <label for="source">源串：</label>
+            <input type="text" name="source" id="sourceInput" value="abcxababcxababcn" oninput="genSource(this.value)">
+            <label for="pattern">模式串：</label>
+            <input type="text" name="pattern" id="patternInput" value="abcxababcn" oninput="genPattern(this.value)">
+            <!-- 横向居中排列按钮 -->
+            <div style="display: flex; justify-content: center;  margin-top: 20px;">
+                <button onclick="autoFind()" id="autoButton">自动运行</button>
+                <button onclick="it = find(); it.next()" id="startButton">运行</button>
+                <button onclick="it.next()" id="nextButton">下一步</button>
+            </div>
+            <span id="result" style="margin-left: 20px; text-align: center; font-weight: bold;"></span>
+        </div>
+    </div>
+    <script>
+        class Span {
+            constructor(ele) {
+                this.ele = ele;
+            }
+            setChar(char) {
+                this.ele.innerText = char || '';
+            }
+            setColor(color) {
+                this.ele.style.backgroundColor = color || '';
+            }
+            addClass(className) {
+                this.ele.classList.add(className);
+            }
+            removeClass(className) {
+                this.ele.classList.remove(className);
+            }
+        }
+
+        class StrContainer {
+            constructor(ele, className) {
+                this.ele = ele;
+                this.className = className || '';
+                this.spans = [];
+            }
+            init(value) {
+                new Array(value.length).fill(0).forEach(_ => {
+                    let span = document.createElement('span');
+                    this.ele.appendChild(span);
+                    span = new Span(span);
+                    this.spans.push(span);
+                })
+            }
+            clear() {
+                this.spans.length = 0;
+                this.ele.innerText = ''
+            }
+            resetStrs() {
+                this.spans.forEach(span => {
+                    span.setChar();
+                })
+            }
+            resetColors() {
+                this.spans.forEach(span => {
+                    span.setColor();
+                })
+            }
+            removeClasses() {
+                this.spans.forEach(span => {
+                    span.removeClass(this.className);
+                })
+            }
+            setChar(index, char) {
+                if(this.spans.length === 0) return;
+                this.spans[index].setChar(char + '');
+            }
+            setStrs(start, str) {
+                for(let i = start; i < str.length + start; i++) {
+                    this.setChar(i, str[i - start]);
+                }
+            }
+            setArr(start, arr) {
+                for(let i = start; i < arr.length + start; i++) {
+                    this.setChar(i, arr[i - start]);
+                }
+            }
+            setColor(index, color) {
+                if(this.spans.length === 0) return;
+                this.spans[index].setColor(color);
+            }
+            setColors(start, str, color) {
+                for(let i = start; i < str.length + start; i++) {
+                    this.setColor(i, color);
+                }
+            }
+            addClass(index) {
+                if(this.spans.length === 0) return;
+                this.spans[index].addClass(this.className);
+            }
+            addClasses(start, str) {
+                for(let i = start; i < str.length + start; i++) {
+                    this.addClass(i, this.className);
+                }
+            }
+        }
+        class Container {
+            constructor(sourceIndex, sourceDiv, patternIndex, patternDiv, patternArray, patternArrayValue) {
+                this.sourceIndex = sourceIndex;
+                this.sourceDiv = sourceDiv;
+                this.patternIndex = patternIndex;
+                this.patternDiv = patternDiv;
+                this.patternArray = patternArray;
+                this.patternArrayValue = patternArrayValue;
+                this.container = [sourceIndex, sourceDiv, patternIndex, patternDiv, patternArray, patternArrayValue];
+            }
+            clear() {
+                this.container.forEach(item => item.clear());
+            }
+            init(value) {
+                this.container.forEach(item => item.init(value))
+            }
+            setSourceDiv(index, value) {
+                this.sourceDiv.setStrs(index, value);
+                this.sourceDiv.addClasses(index, value);
+            }
+            setSourceIndex(index, value) {
+                this.sourceIndex.resetStrs();
+                this.sourceIndex.setChar(index, value);
+            }
+            setPatternDiv(index, value) {
+                this.patternDiv.setStrs(index, value);
+                this.patternDiv.addClasses(index, value);
+            }
+            setPatternIndex(index, value) {
+                this.patternIndex.resetStrs();
+                this.patternIndex.setChar(index, value);
+            }
+            setPatternArray(index, arr) {
+                this.patternArray.setArr(index, arr);
+                this.patternArray.addClasses(index, arr);
+            }
+            setPatternArrayValue(index, value) {
+                this.patternArrayValue.resetStrs();
+                this.patternArrayValue.setChar(index, value);
+            }
+            resetSourceIndex(value) {
+                this.setSourceIndex(0, value);
+            }
+            resetPatternIndex(value) {
+                this.setPatternIndex(0, value);
+            }
+            resetPatternDiv() {
+                this.patternDiv.resetStrs();
+                this.patternDiv.resetColors();
+                this.patternDiv.removeClasses();
+            }
+            resetPatternArray() {
+                this.patternArray.resetStrs();
+                this.patternArray.resetColors();
+                this.patternArray.removeClasses();
+            }
+            resetColors(eleStr) {
+                this[eleStr].resetColors();
+            }
+            setPatternArrayChar(index, char) {
+                this.patternArray.setChar(index, char);
+            }
+            movePatternDiv(start, value) {
+                this.patternDiv.resetStrs();
+                this.patternDiv.removeClasses();
+                this.setPatternDiv(start, value);
+            }
+            movePatternArray(start, arr) {
+                this.patternArray.resetStrs();
+                this.patternArray.removeClasses();
+                this.setPatternArray(start, arr);
+            }
+            compareSourceAndPattern(index, color) {
+                this.sourceDiv.setColor(index, color);
+                this.patternDiv.setColor(index, color);
+            }
+            comparePatterns(i, j, color) {
+                this.patternDiv.setColor(i, color);
+                this.patternDiv.setColor(j, color);
+            }
+            resetSourceAndPattern() {
+                this.sourceDiv.resetColors();
+                this.patternDiv.resetColors();
+            }
+        }
+        var sourceIndex = new StrContainer(document.getElementById('sourceIndex'));
+        var sourceDiv = new StrContainer(document.getElementById('source'), 'lightcyan');
+
+        var patternIndex = new StrContainer(document.getElementById('patternIndex'));
+        var patternDiv = new StrContainer(document.getElementById('pattern'), 'lightskyblue');
+        var patternArray = new StrContainer(document.getElementById('patternArray'), 'lightblue');
+        var patternArrayValue = new StrContainer(document.getElementById('patternArrayValue'));
+
+        var container = new Container(sourceIndex, sourceDiv, patternIndex, patternDiv, patternArray, patternArrayValue);
+        
+        var sourceInput = document.getElementById('sourceInput');
+        var patternInput = document.getElementById('patternInput');
+        var findButton = document.getElementById('findButton');
+        var startButton = document.getElementById('startButton');
+        var nextButton = document.getElementById('nextButton');
+        var autoButton = document.getElementById('autoButton');
+        var result = document.getElementById('result');
+
+        var sourceInputValue = '';
+        var patternInputValue = '';
+
+        var isRunning = false;
+
+        function genSource(value) {
+            result.innerText = '';
+            sourceInputValue = value;
+            // all clear
+            container.clear();
+            // init all
+            container.init(value);
+            container.setSourceDiv(0, value);
+            container.setSourceIndex(0, 'source[0]');
+            container.setPatternIndex(0, 'pattern[0]');
+            if(patternInputValue.length <= value.length) {
+                container.setPatternDiv(0, patternInputValue);
+                container.setPatternArray(0, patternInputValue.replace(/./g, ' '));
+                container.setPatternArrayValue(0, '0');
+                able();
+            } else {
+                disable();
+                result.innerText = value.length < 1 ? '请输入source字符串~不然就是一片空白哟' : 'source长度必须大于pattern才可以开始~';
+            }
+        }
+
+        function genPattern(value) {
+            if(value.length > sourceInputValue.length) {
+                result.innerText = 'pattern字符串长度超过source长度';
+                patternInput.value = patternInputValue;
+                return;
+            } else {
+                able();
+            }
+            result.innerText = '';
+            // reset sourceIndex
+            container.resetSourceIndex('source[0]');
+            container.resetPatternIndex('pattern[0]');
+
+            patternInputValue = value;
+            // reset patternDiv
+            container.resetPatternDiv();
+            // set patternDiv
+            container.setPatternDiv(0, value);
+            // reset sourceDiv colors
+            container.resetColors('sourceDiv');
+            // reset patternArray
+            container.resetPatternArray();
+            // set patternArray
+            container.setPatternArray(0, value.replace(/./g, ' '));
+        }
+
+        let sleep = (t) => new Promise(resolve => setTimeout(resolve, t));
+
+        function running() {
+            patternInput.disabled = true;
+            sourceInput.disabled = true;
+            startButton.disabled = true;
+            nextButton.disabled = '';
+            autoButton.disabled = true;
+            result.innerText = '';
+        }
+
+        function autoRunning() {
+            running();
+            nextButton.disabled = true;
+        }
+
+        function resetRunning() {
+            patternInput.disabled = '';
+            sourceInput.disabled = '';
+            startButton.disabled = '';
+            nextButton.disabled = true;
+            autoButton.disabled = '';
+        }
+
+        function disable() {
+            startButton.disabled = true;
+            autoButton.disabled = true;
+        }
+
+        function able() {
+            startButton.disabled = '';
+            autoButton.disabled = '';
+        }
+
+        function* find(source, pattern) {
+            genPattern(patternInputValue);
+            running();
+            yield;
+            source = sourceInputValue;
+            pattern = patternInputValue;
+
+            let table = new Array(pattern.length).fill(0);
+
+            let k = 0;
+            container.setPatternArrayChar(k, '0');
+
+            for(let j = 1; j < pattern.length; j++) {
+                yield;
+                container.patternDiv.setColor(k, 'lightgrey');
+                yield;
+                container.patternDiv.setColor(j, 'lightgrey')
+                yield;
+                if(pattern[j] === pattern[k]) {
+                    container.comparePatterns(j, k, 'lightgreen');
+                    k++;
+                    yield;
+                    container.patternArrayValue.setChar(j-1, k-1 + '++');
+                } else {
+                    container.comparePatterns(j, k, 'red');
+                    k = 0;
+                    yield;
+                    container.setPatternArrayValue(j, k + '');
+                    if(pattern[j] === pattern[k]) {
+                        yield;
+                        container.patternDiv.resetColors();
+                        yield;
+                        container.patternDiv.setColor(k, 'lightgrey');
+                        yield;
+                        container.patternDiv.setColor(j, 'lightgrey');
+                        yield;
+                        container.comparePatterns(j, k, 'lightgreen');
+                        k++;
+                        yield;
+                        container.patternArrayValue.setChar(j, k - 1 + '++');
+                    }
+                }
+                yield;
+                container.setPatternArrayValue(j, k + '');
+                yield;
+                container.setPatternArrayChar(j, k + '');
+                table[j] = k;
+                yield;
+                container.patternDiv.resetColors();
+            }
+
+            container.patternArrayValue.resetStrs();
+
+            let j = 0;
+            for(let i = 0; i < source.length; i++) {
+                if((i - j + pattern.length) > source.length) {
+                    resetRunning();
+                    result.innerText = 'result: 由于需要移动的pattern已经超出了剩下的source字符串，故匹配失败';
+                    console.log(false);
+                    return false;
+                }
+                container.setSourceIndex(i, `source[${i}]`);
+                container.setPatternIndex(i, `pattern[${j}]`);
+
+                container.movePatternDiv(i - j, pattern);
+                container.movePatternArray(i - j, table);
+                yield;
+                if(source[i] === pattern[j]) {
+                    container.compareSourceAndPattern(i, 'lightgreen');
+                    yield;
+                    j ++;
+                } else {
+                    container.compareSourceAndPattern(i, 'red');
+                    yield;
+                    while(j > 0) {
+                        if(i == source.length - 1) {
+                            resetRunning();
+                            result.innerText = 'result: 匹配失败';
+                            console.log(false)
+                            return false;
+                        }
+                        container.patternArray.setColor(i - 1, 'lightcoral');
+                        yield;
+                        j = table[j - 1];
+                        container.setPatternIndex(i, `index=${j}`);
+                        yield;
+                        container.patternArray.resetColors();
+                        container.setPatternIndex(i, `pattern[${j}]`);
+                        if(i - j + pattern.length > source.length) {
+                            resetRunning();
+                            result.innerText = 'result: 由于需要移动的pattern已经超出了剩下的source字符串，故匹配失败';
+                            console.log(false);
+                            return false;
+                        }
+                        container.setPatternIndex(i, `pattern[${j}]`);
+                        yield;
+                        container.movePatternDiv(i - j, pattern);
+                        container.movePatternArray(i - j, table);
+
+                        container.resetSourceAndPattern();
+                        yield;
+                        if(source[i] === pattern[j]) {
+                            container.compareSourceAndPattern(i, 'lightgreen');
+                            yield;
+                            j++;
+                            break;
+                        } else {
+                            container.compareSourceAndPattern(i, 'red');
+                            yield;
+                        }
+                    }
+                    container.resetSourceAndPattern();
+                    yield;
+                }
+                if(j === pattern.length) {
+                    resetRunning();
+                    result.innerText = 'result: 匹配成功！';
+                    console.log(true)
+                    return true;
+                }
+            }
+        }
+        var it;
+        genSource('abcxababcxababcn');
+        genPattern('abcxababcn');
+        resetRunning();
+
+        async function autoFind() {
+            var g = find();
+            var res = g.next();
+            autoRunning();
+
+            while(!res.done){
+                await sleep(400);
+                res = g.next();
+            }
+        }
+    </script>
+</body>
+</html>
