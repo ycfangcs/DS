@@ -12,18 +12,21 @@ void quickSort(int arr[], int left, int right) {
     if (left >= right) {
         return;
     }
-    int i = left, j = right, temp = arr[left]; // 取最左边的数为基准数
+    // 划分
+    int i = left, j = right, pivot = arr[left]; // 取最左边的数为中枢
     while (i < j) {
-        while (i < j && arr[j] >= temp) {
+        while (i < j && arr[j] >= pivot) {
             j--;
         }
         arr[i] = arr[j];
-        while (i < j && arr[i] <= temp) {
+        while (i < j && arr[i] <= pivot) {
             i++;
         }
         arr[j] = arr[i];
     }
-    arr[i] = temp;
+    arr[i] = pivot;
+    
+    // 递归
     quickSort(arr, left, i - 1);
     quickSort(arr, i + 1, right);
 }

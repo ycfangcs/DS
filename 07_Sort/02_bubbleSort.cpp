@@ -11,13 +11,16 @@ int num = 10;
 void bubbleSort(int arr[], int len) {
     int i, j, temp;
     for (i = 0; i < len - 1; i++) {
+        bool flag = true; // 如果已经有序，就不需要再比较了
         for (j = 0; j < len - 1 - i; j++) {
             if (arr[j] > arr[j + 1]) { // 相邻元素两两对比
                 temp = arr[j + 1]; // 元素交换
                 arr[j + 1] = arr[j];
                 arr[j] = temp;
+                flag = false;
             }
         }
+        if (flag) break;
     }
 }
 
